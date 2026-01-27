@@ -2273,19 +2273,28 @@ def _instance_to_coco_segmentation(
 ):
     dobj = foue.to_detected_object(detection, extra_attrs=False)
 
+    width, height = frame_size  # <-- move this up so it always exists
+
     try:
         mask = etai.render_instance_image(
             dobj.mask, dobj.bounding_box, frame_size
         )
     except:
         # Either mask or bounding box is too small to render
-        width, height = frame_size
         mask = np.zeros((height, width), dtype=bool)
 
     if detection.get_attribute_value(iscrowd, None):
         return _mask_to_rle(mask)
 
-    return _mask_to_polygons(mask, tolerance)
+    # bbox boundaries in ABSOLUTE PIXELS
+    x, y, w, h = detection.bounding_box  # relative [0..1]
+    xmin = x * width
+    ymin = y * height
+    xmax = xmin + (w * width)
+    ymax = ymin + (h * height)
+    boundaries = (xmin, ymin, xmax, ymax)
+
+    return _mask_to_polygons(mask, tolerance, boundaries=boundaries)
 
 
 def _make_coco_keypoints(keypoint, frame_size):
@@ -2337,7 +2346,7 @@ def _mask_to_rle(mask):
     return {"counts": counts, "size": list(mask.shape)}
 
 
-def _mask_to_polygons(mask, tolerance):
+def _mask_to_polygons(mask, tolerance, boundaries=None):
     if tolerance is None:
         tolerance = 2
 
@@ -2355,6 +2364,10 @@ def _mask_to_polygons(mask, tolerance):
             continue
 
         contour = np.flip(contour, axis=1)
+        if boundaries is not None:
+            xmin, ymin, xmax, ymax = boundaries
+            contour[:, 0] = np.clip(contour[:, 0], xmin, xmax)
+            contour[:, 1] = np.clip(contour[:, 1], ymin, ymax)
         segmentation = contour.ravel().tolist()
 
         # After padding and subtracting 1 there may be -0.5 points
