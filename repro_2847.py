@@ -12,16 +12,13 @@ LABELS_JSON = EXPORT_DIR / "labels.json"
 
 
 def _iter_coco_segmentation_points(seg):
-    """
-    Yields (x, y) points from COCO polygon segmentation lists.
-    COCO polygon format: segmentation = [[x1,y1,x2,y2,...], [ ... ], ...]
-    """
+
     if not isinstance(seg, list):
         return
     for poly in seg:
         if not isinstance(poly, list):
             continue
-        # poly is [x1,y1,x2,y2,...]
+
         for i in range(0, len(poly) - 1, 2):
             yield float(poly[i]), float(poly[i + 1])
 
@@ -34,7 +31,6 @@ def main():
     print("FO file:", getattr(fo, "__file__", None))
 
     # --- Load a small dataset slice with segmentations ---
-    # IMPORTANT: give it a deterministic name so reruns are predictable
     ds_name = "open-images-v7-validation-15"
 
     if ds_name in fo.list_datasets():
@@ -46,17 +42,15 @@ def main():
         split="validation",
         max_samples=15,
         shuffle=True,
-        label_types=["segmentations"],  # force segs
+        label_types=["segmentations"],  
         dataset_name=ds_name,
     )
 
     print("Loaded:", dataset.name)
     print("Count:", dataset.count())
 
-    # --- Export to COCO ---
     if EXPORT_DIR.exists():
-        # don't blow away manually, but keep it simple for you:
-        # remove old labels.json so we always read the fresh one
+
         try:
             (EXPORT_DIR / "labels.json").unlink()
         except FileNotFoundError:
@@ -77,7 +71,6 @@ def main():
 
     data = json.loads(LABELS_JSON.read_text(encoding="utf-8"))
 
-    # --- Check for segmentation vertices outside bbox ---
     annotations = data.get("annotations", [])
     oob_hits = 0
     max_outside = 0.0
@@ -88,7 +81,6 @@ def main():
         if bbox is None or seg is None:
             continue
         if not isinstance(seg, list):
-            # RLE etc. skip
             continue
 
         x, y, w, h = bbox
@@ -117,9 +109,9 @@ def main():
     print("Max outside (px):", max_outside)
 
     if oob_hits > 0:
-        print("\n⚠️ Reproduced: segmentation vertices outside bbox. See max outside above.")
+        print("\n Reproduced: segmentation vertices outside bbox. See max outside above.")
     else:
-        print("\n✅ Not reproduced: no segmentation vertices outside bbox in this export.")
+        print("\n Not reproduced: no segmentation vertices outside bbox in this export.")
 
 
 if __name__ == "__main__":

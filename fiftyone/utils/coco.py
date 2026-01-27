@@ -2272,9 +2272,8 @@ def _instance_to_coco_segmentation(
     detection, frame_size, iscrowd="iscrowd", tolerance=None
 ):
     dobj = foue.to_detected_object(detection, extra_attrs=False)
-
-    width, height = frame_size  # <-- move this up so it always exists
-
+    # Moved this so it always exists
+    width, height = frame_size  
     try:
         mask = etai.render_instance_image(
             dobj.mask, dobj.bounding_box, frame_size
