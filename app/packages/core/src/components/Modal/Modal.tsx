@@ -2,6 +2,7 @@ import {
   useAutoSave,
   useRegisterAnnotationCommandHandlers,
   useRegisterAnnotationEventHandlers,
+  useRegisterRendererEventHandlers,
 } from "@fiftyone/annotation";
 import { HelpPanel, JSONPanel } from "@fiftyone/components";
 import { selectiveRenderingEventBus } from "@fiftyone/looker";
@@ -28,7 +29,6 @@ import {
   KnownContexts,
   useKeyBindings,
 } from "@fiftyone/commands";
-import { FeatureFlag, useFeature } from "@fiftyone/feature-flags";
 
 const ModalWrapper = styled.div`
   position: fixed;
@@ -66,12 +66,11 @@ const SpacesContainer = styled.div`
 const ModalCommandHandlersRegistration = () => {
   useRegisterAnnotationCommandHandlers();
   useRegisterAnnotationEventHandlers();
+  useRegisterRendererEventHandlers();
+
   const modalMode = useModalMode();
 
-  const { isEnabled: enableAutoSave } = useFeature({
-    feature: FeatureFlag.ANNOTATION_AUTO_SAVE,
-  });
-  useAutoSave(enableAutoSave && modalMode === ModalMode.ANNOTATE);
+  useAutoSave(modalMode === ModalMode.ANNOTATE);
 
   return <Fragment />;
 };

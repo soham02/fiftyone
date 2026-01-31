@@ -20,6 +20,10 @@ export type AnnotationEventGroup = {
    */
   "annotation:persistenceRequested": void;
   /**
+   * Notification event emitted when a persistence request is in flight.
+   */
+  "annotation:persistenceInFlight": void;
+  /**
    * Notification event emitted when aggregate annotation persistence is successful.
    */
   "annotation:persistenceSuccess": void;
@@ -108,4 +112,17 @@ export type AnnotationEventGroup = {
   "annotation:cuboidCreationStarted": {
     position: [number, number, number];
   };
+
+  /**
+   * Notification event emitted when entering annotation mode.
+   */
+  "annotation:enterAnnotationMode": {
+    path?: string;
+    labelId?: string;
+  };
+
+  /**
+   * Notification event emitted when exiting annotation mode.
+   */
+  "annotation:exitAnnotationMode": void;
 };
