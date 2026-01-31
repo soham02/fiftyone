@@ -2229,8 +2229,8 @@ def _coco_segmentation_to_mask(segmentation, bbox, frame_size):
     mask = mask_utils.decode(rle).astype(bool)
 
     return mask[
-        int(round(y)) : int(round(y + h)),
-        int(round(x)) : int(round(x + w)),
+        int(round(y)): int(round(y + h)),
+        int(round(x)): int(round(x + w)),
     ]
 
 
@@ -2272,8 +2272,8 @@ def _instance_to_coco_segmentation(
     detection, frame_size, iscrowd="iscrowd", tolerance=None
 ):
     dobj = foue.to_detected_object(detection, extra_attrs=False)
-    # Moved this so it always exists
-    width, height = frame_size  
+    width, height = frame_size
+
     try:
         mask = etai.render_instance_image(
             dobj.mask, dobj.bounding_box, frame_size
@@ -2285,15 +2285,19 @@ def _instance_to_coco_segmentation(
     if detection.get_attribute_value(iscrowd, None):
         return _mask_to_rle(mask)
 
-    # bbox boundaries in ABSOLUTE PIXELS
+    # Compute the bbox boundaries that the polygon
+    # coordinates must stay within. The mask was placed at integer pixel
+    # coordinates by ETA, but the COCO bbox uses float coordinates. To ensure
+    # COCO format validity (segmentation within bbox), we clamp polygons to
+    # the COCO bbox boundaries.
     x, y, w, h = detection.bounding_box  # relative [0..1]
-    xmin = x * width
-    ymin = y * height
-    xmax = xmin + (w * width)
-    ymax = ymin + (h * height)
-    boundaries = (xmin, ymin, xmax, ymax)
+    bbox_xmin = x * width
+    bbox_ymin = y * height
+    bbox_xmax = bbox_xmin + (w * width)
+    bbox_ymax = bbox_ymin + (h * height)
+    bbox_bounds = (bbox_xmin, bbox_ymin, bbox_xmax, bbox_ymax)
 
-    return _mask_to_polygons(mask, tolerance, boundaries=boundaries)
+    return _mask_to_polygons(mask, tolerance, bbox_bounds=bbox_bounds)
 
 
 def _make_coco_keypoints(keypoint, frame_size):
@@ -2345,7 +2349,18 @@ def _mask_to_rle(mask):
     return {"counts": counts, "size": list(mask.shape)}
 
 
-def _mask_to_polygons(mask, tolerance, boundaries=None):
+def _mask_to_polygons(mask, tolerance, bbox_bounds=None):
+    """Converts a binary mask to COCO polygon format.
+
+    Args:
+        mask: a binary mask array
+        tolerance: tolerance for polygon approximation (default: 2)
+        bbox_bounds: optional (xmin, ymin, xmax, ymax) to clamp polygon
+            coordinates, ensuring COCO format validity
+
+    Returns:
+        list of polygon coordinate lists
+    """
     if tolerance is None:
         tolerance = 2
 
@@ -2363,14 +2378,20 @@ def _mask_to_polygons(mask, tolerance, boundaries=None):
             continue
 
         contour = np.flip(contour, axis=1)
-        if boundaries is not None:
-            xmin, ymin, xmax, ymax = boundaries
+
+        # find_contours at 0.5 level produces sub-pixel
+        # coordinates, and the mask may be placed at integer coordinates that
+        # differ slightly from the float bbox. Clamp to bbox bounds to ensure
+        # COCO format validity (segmentation must be within bbox).
+        if bbox_bounds is not None:
+            xmin, ymin, xmax, ymax = bbox_bounds
             contour[:, 0] = np.clip(contour[:, 0], xmin, xmax)
             contour[:, 1] = np.clip(contour[:, 1], ymin, ymax)
+
         segmentation = contour.ravel().tolist()
 
-        # After padding and subtracting 1 there may be -0.5 points
-        segmentation = [0 if i < 0 else i for i in segmentation]
+        # After padding and subtracting 1 there may be negative points
+        segmentation = [max(0, i) for i in segmentation]
 
         polygons.append(segmentation)
 
