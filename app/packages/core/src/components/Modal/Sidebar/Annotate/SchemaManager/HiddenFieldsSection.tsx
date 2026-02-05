@@ -4,11 +4,10 @@
  * Displays the collapsible list of hidden fields.
  */
 
-import { FeatureFlag, useFeature } from "@fiftyone/feature-flags";
+import type { ListItemProps } from "@voxel51/voodo";
 import {
   Anchor,
   Button,
-  Clickable,
   Icon,
   IconName,
   Pill,
@@ -19,7 +18,6 @@ import {
   Tooltip,
   Variant,
 } from "@voxel51/voodo";
-import type { ListItemProps } from "@voxel51/voodo";
 import { useCallback, useMemo, useState } from "react";
 import SecondaryText from "./SecondaryText";
 import { isSystemReadOnlyField } from "./constants";
@@ -42,9 +40,6 @@ const HiddenFieldActions = ({
   path: string;
   hasSchema: boolean;
 }) => {
-  const { isEnabled: isM4Enabled } = useFeature({
-    feature: FeatureFlag.VFF_ANNOTATION_M4,
-  });
   const setField = useSetCurrentField();
   const fieldData = useFieldSchemaData(path);
   const isSystemReadOnly = isSystemReadOnlyField(path);
@@ -58,7 +53,7 @@ const HiddenFieldActions = ({
           Unsupported
         </Pill>
       )}
-      {isM4Enabled && (isReadOnly || isSystemReadOnly) && (
+      {(isReadOnly || isSystemReadOnly) && (
         <Pill data-cy="pill" size={Size.Md}>
           Read-only
         </Pill>
@@ -71,9 +66,14 @@ const HiddenFieldActions = ({
               anchor={Anchor.Bottom}
               portal
             >
-              <Clickable data-cy={"edit"} onClick={() => setField(path)}>
+              <Button
+                variant={Variant.Icon}
+                borderless
+                data-cy={"edit"}
+                onClick={() => setField(path)}
+              >
                 <Icon name={IconName.Edit} size={Size.Md} />
-              </Clickable>
+              </Button>
             </Tooltip>
           ) : (
             <Button
